@@ -99,7 +99,7 @@ function update(){
 //---------------------------------------------------------events
 canvas.addEventListener("mousemove",trackPosition, true);
 window.addEventListener("resize",changeWindowSize, true);
-document.addEventListener("keypress",changeColor, true);
+document.addEventListener("keypress",changeColor, true); 
 
 // --------------------------------------------------------functions/classes
 
