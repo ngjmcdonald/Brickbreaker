@@ -82,9 +82,9 @@ function update(){
 
 		// If the ball hits the bottom, run gameOver()
 		if (ball.y-ball.r*2 + ball.r > H){
-			ball.vy = -ball.vy;
-			ball.y = H - ball.r; 
-			// gameOver();
+			// ball.vy = -ball.vy;
+			// ball.y = H - ball.r; 
+			//gameOver();
 		//if the ball hits the top or the top/bottom of a brick reverse y direction	
 		}else if((ball.y < 0 + ball.r) || collisionYBricks()){
 			ball.vy = -ball.vy;
@@ -99,10 +99,21 @@ function update(){
 		
 		//paddle/brick collision detection
 		if(paddleCollides(ball,paddle)){
-			pRightEdge = paddle.x+paddle.height
 
-			
-				ball.vy = -ball.vy;
+			//send ball in the direction of theleft and right edges of the paddle
+			pRightEdge = paddle.x+paddle.width-30;
+			pLeftEdge = paddle.x+30;
+			if((ball.x+ball.r > paddle.x)&&(ball.x-ball.r < pLeftEdge)){
+				if(!(ball.vx < 0)){
+					ball.vx = -ball.vx;	
+				}
+			}
+			if((ball.x < paddle.x+paddle.width)&&(ball.x > pRightEdge)){
+				if(!(ball.vx > 0)){
+					ball.vx = -ball.vx;	
+				}
+			}
+			ball.vy = -ball.vy;
 			
 
 		}
@@ -163,23 +174,6 @@ function collisionXBricks(){
 	return false;
 }
 
-function radCollides(ball,brick) {
-
-	bCenterX = brick.x+brick.width/2;
-	bCenterY = brick.y+brick.height/2;
-
-	distanceX = Math.abs((ball.x - bCenterX));
-	distanceY = Math.abs((ball.y - bCenterY));
-
-	hy = Math.sqrt((distanceX*distanceX) + (distanceY*distanceY));
-	hy -= (ball.r + obj2.r);
-	
-	if(hy <=0){
-		return true;
-	}else{
-		return false;
-	}
-}
 
  function paddleCollides(b, p) { 
  	if(b.x + ball.r >= p.x && b.x - ball.r <=p.x + p.width) { 
@@ -315,10 +309,22 @@ function draw(){
 }
 
 function trackPosition(e){
-	paddle.x = mouse.x;
+	var distanceR;
+	var distanceL;
+
+
+	paddle.x = mouse.x -paddle.width/2;	
+	distanceR = W - (paddle.x +paddle.width) ;
+	distanceL = paddle.x;
+
+	if(distanceR <= 0){
+		paddle.x = W -paddle.width;
+	}else if(distanceL <= 0){
+		paddle.x = 0;
+	}
+
 	mouse.x = e.pageX;
 	mouse.y = e.pageY;
-
 }
 
 function gameOver(){
