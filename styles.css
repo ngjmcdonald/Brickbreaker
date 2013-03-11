@@ -4,7 +4,10 @@ body{
 	overflow: hidden;
 }
 
+#container{
+	/*text-align:center;*/
+}
+
 #canvas{
-	margin:auto;
-	display: block;
+	
 }

@@ -5,7 +5,7 @@ window.requestAnimFrame = (function(){
 		window.oRequestAnimationFrame || 
 		window.msRequestAnimationFrame ||
 			function(callback){ 
-				window.setTimeout(callback, 1000 / 60); 
+				callback(); 
 			}; 
 })();
 
@@ -22,26 +22,31 @@ window.cancelRequestAnimFrame = ( function() {
 /*
 	TODO collision detection
 			make ball travel in the left or right direction when it hits the left and right edges of paddle
-		increase ball speed as play progresse
+		increase ball speed as play progress
 
 
 */
+var BRICK_WIDTH = 150;
+var BRICK_HEIGHT = 40;
+
 //init the canvas element
 var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
 
 //get the window width
-// var W = window.innerWidth; // windows width
-// var H = window.innerHeight; // windows height
+var W = window.innerWidth; // windows width
+var H = window.innerHeight; // windows height
 
 
-var W = 1000; // windows width
-var H = 600; // windows height
+// var W = 1000; // windows width
+// var H = 600; // windows height
 
 //set the canvas to the window h w
 canvas.width = W;
 canvas.height = H;
 
+
+var targetFps = 15;
 
 
 //fill the canvas black
@@ -54,19 +59,16 @@ var keyColors = [122,120,99,118,98];
 var mouse = {}; //mouse object
 
 
-//init ball
-var ball = new Ball(50,50,4,8,10,brickColors[0]);
+
+//init paddle
 var paddle = new Paddle(brickColors[0]);
-
-mouse.x = W/2 + paddle.width/2;
-
+//init ball
+var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,4,8,10,brickColors[0]);
 
 placeBricks();
-
-
 //-----------------------render loop
 function render(){	
-	init = requestAnimFrame(render);
+	// init = requestAnimFrame(render);
 	update();
 	draw();
 }
@@ -78,10 +80,12 @@ function update(){
 		ball.x += ball.vx;
 		ball.y += ball.vy;
 
-		// If the ball hits the top/bottom, // walls, run gameOver()
-		if (ball.y + ball.r > H){
+		// If the ball hits the bottom, run gameOver()
+		if (ball.y-ball.r*2 + ball.r > H){
 			ball.vy = -ball.vy;
 			ball.y = H - ball.r; 
+			// gameOver();
+
 		}else if(ball.y < 0 + ball.r){
 			ball.vy = -ball.vy;
 			ball.y = ball.r;
@@ -94,7 +98,47 @@ function update(){
 			ball.vx = -ball.vx;
 			ball.x = ball.r;
 		}
-	}
+
+		// ball/brick collision detection
+		for(var i =0; i < bricks.length; i++){
+			if(rectCollides(ball,bricks[i])){
+				//get the surface of the ball
+				var ballSurfaceY = ball.y + ball.r;
+				var ballSurfaceX = ball.x + ball.r;
+
+				if((ball.x > bricks[i].x)&&(ball.x-ball.r < bricks[i].x+bricks[i].width)){
+					//check for y collision (if its inside the brick on the x, then it must be colliding y)
+					ball.vy = -ball.vy;
+					console.log("Y");
+					
+
+				}
+				if((ball.y > bricks[i].y)&&(ball.y < bricks[i].y+bricks[i].height)){
+					//check for x collision (if its inside the brick on the y, then it must be colliding x)
+					ball.vx = -ball.vx;
+					
+				}
+				bricks.splice(i,1);
+				
+			}
+		}
+		//paddle/brick collision detection
+		if(paddleCollides(ball,paddle)){
+			var ballSurfaceY = ball.y + ball.r;
+			var ballSurfaceX = ball.x + ball.r;
+
+			pRightEdge = paddle.x+paddle.height
+
+			// if(!(ballSurfaceY > paddle.y)){
+			// 	ball.vy = -ball.vy;
+			// }
+
+		}
+		
+		
+		
+}
+loopInterval = setInterval("requestAnimFrame(render)", 1000 / targetFps);
 
 //---------------------------------------------------------events
 canvas.addEventListener("mousemove",trackPosition, true);
@@ -103,7 +147,41 @@ document.addEventListener("keypress",changeColor, true);
 
 // --------------------------------------------------------functions/classes
 
+//------collision detection
+function rectCollides(obj1,obj2){
+	 return (obj1.x-obj1.r <= obj2.x + obj2.width && //1left is to the left 2right
+        obj2.x-obj1.r <= obj1.x + obj1.r && //2left is to the left of 1 right
+    	obj1.y-obj1.r <= obj2.y + obj2.height && // 1top is to the top of 2bottom
+        obj2.y-obj1.r <= obj1.y + obj1.r)
+}
 
+
+function radCollides(obj1,obj2) { 
+	distanceX = Math.abs((obj1.x - obj2.x));
+	distanceY = Math.abs((obj1.y - obj2.y));
+
+	hy = Math.sqrt((distanceX*distanceX) + (distanceY*distanceY));
+	hy -= (obj1.r + obj2.r);
+	
+	if(hy <=0){
+		return true;
+	}else{
+		return false;
+	}
+}
+
+ function paddleCollides(b, p) { 
+ 	if(b.x + ball.r >= p.x && b.x - ball.r <=p.x + p.width) { 
+ 		console.log("asda");
+ 		if(b.y >= (p.y - p.height) && p.y > 0){ 
+ 			return true; 
+ 		}else if(b.y <= p.height && p.y == 0) {
+        	return true;
+    	}else {
+    		return false;	
+    	}
+	}
+}
 
 function Ball(myX,myY,myVx,myVy,mySize,myColor){
 	this.x = myX;
@@ -150,6 +228,7 @@ function Brick(posX,posY,myColor){
 }
 
 function changeColor(e){
+	console.log("HELLO");
 	if(e.keyCode == keyColors[0]){
 		paddle.c = brickColors[0];
 		ball.c = brickColors[0];
@@ -168,19 +247,43 @@ function changeColor(e){
 	}
 }
 
+function calcNumOfCols(screenW){
+	var num = W;
+	var isMaxReached = false;
+	while(!isMaxReached){
+		if(num % BRICK_WIDTH == 0){
+			isMaxReached = true;
+		}else{
+			num--;
+		}
+	}
+	return num;
+}
+
+
 function placeBricks(){
-	var bColor = Math.floor(Math.random()*6);
+	var bColor = Math.floor(Math.random()*5);
+	var myWidth;
+	if(W < 1050){
+		myWidth = 1050;
+	}else{
+		myWidth = W;
+	}
+
+	var leftPadding = (W - 1050)/ 2;
 	var row = 0;
-	var column = 45;
-	for (var i = 0; i < 54; i++) {
-		var bColor = Math.floor(Math.random()*6);
+	var column = leftPadding;
+	for (var i = 0; i < 56; i++) {
+		var bColor = Math.floor(Math.random()*5);
 		var brick = new Brick(column,row,brickColors[bColor]);
 		bricks.push(brick);
-		if(column > W-brick.width*2){
-			column = 45;
+		
+
+		if(column > (1000+leftPadding)-brick.width){
+			column =leftPadding;
 			row+=brick.height;
 		}else{
-			column+=brick.width;	
+			column+=brick.width;
 		}
 	}
 	
@@ -194,17 +297,18 @@ function paintCanvas(){
 
 function draw(){
 	paintCanvas();
-	ball.draw();
 	paddle.draw();
 	for(var i =0; i < bricks.length; i++){
 		bricks[i].draw();
 	}
+	ball.draw();
 }
 
 function trackPosition(e){
+	paddle.x = mouse.x;
 	mouse.x = e.pageX;
 	mouse.y = e.pageY;
-	// console.log(paddle.x + ": " + mouse.x)
+
 }
 
 function gameOver(){
