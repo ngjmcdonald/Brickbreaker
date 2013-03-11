@@ -46,7 +46,7 @@ canvas.width = W;
 canvas.height = H;
 
 
-var targetFps = 15;
+var targetFps = 60;
 
 
 //fill the canvas black
@@ -63,7 +63,7 @@ var mouse = {}; //mouse object
 //init paddle
 var paddle = new Paddle(brickColors[0]);
 //init ball
-var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,4,8,10,brickColors[0]);
+var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,4,8,6,brickColors[0]);
 
 placeBricks();
 //-----------------------render loop
@@ -85,53 +85,25 @@ function update(){
 			ball.vy = -ball.vy;
 			ball.y = H - ball.r; 
 			// gameOver();
-
-		}else if(ball.y < 0 + ball.r){
+		//if the ball hits the top or the top/bottom of a brick reverse y direction	
+		}else if((ball.y < 0 + ball.r) || collisionYBricks()){
 			ball.vy = -ball.vy;
-			ball.y = ball.r;
 		}
-		//if ball strikes the vertical walls, invert the x-velocity vectory of ball
-		if (ball.x + ball.r > W) { 
+		//if ball strikes the vertical walls or the left/right of brick, invert the x-velocity vectory of ball
+		if ((ball.x + ball.r > W)||collisionXBricks()) { 
 			ball.vx = -ball.vx;
-			ball.x = W - ball.r;
-		}else if(ball.x - ball.r < 0){
+		}else if((ball.x - ball.r < 0)||collisionXBricks()){
 			ball.vx = -ball.vx;
-			ball.x = ball.r;
 		}
 
-		// ball/brick collision detection
-		for(var i =0; i < bricks.length; i++){
-			if(rectCollides(ball,bricks[i])){
-				//get the surface of the ball
-				var ballSurfaceY = ball.y + ball.r;
-				var ballSurfaceX = ball.x + ball.r;
-
-				if((ball.x > bricks[i].x)&&(ball.x-ball.r < bricks[i].x+bricks[i].width)){
-					//check for y collision (if its inside the brick on the x, then it must be colliding y)
-					ball.vy = -ball.vy;
-					console.log("Y");
-					
-
-				}
-				if((ball.y > bricks[i].y)&&(ball.y < bricks[i].y+bricks[i].height)){
-					//check for x collision (if its inside the brick on the y, then it must be colliding x)
-					ball.vx = -ball.vx;
-					
-				}
-				bricks.splice(i,1);
-				
-			}
-		}
+		
 		//paddle/brick collision detection
 		if(paddleCollides(ball,paddle)){
-			var ballSurfaceY = ball.y + ball.r;
-			var ballSurfaceX = ball.x + ball.r;
-
 			pRightEdge = paddle.x+paddle.height
 
-			// if(!(ballSurfaceY > paddle.y)){
-			// 	ball.vy = -ball.vy;
-			// }
+			
+				ball.vy = -ball.vy;
+			
 
 		}
 		
@@ -148,20 +120,59 @@ document.addEventListener("keypress",changeColor, true);
 // --------------------------------------------------------functions/classes
 
 //------collision detection
-function rectCollides(obj1,obj2){
-	 return (obj1.x-obj1.r <= obj2.x + obj2.width && //1left is to the left 2right
-        obj2.x-obj1.r <= obj1.x + obj1.r && //2left is to the left of 1 right
-    	obj1.y-obj1.r <= obj2.y + obj2.height && // 1top is to the top of 2bottom
-        obj2.y-obj1.r <= obj1.y + obj1.r)
+
+function collisionYBricks(){
+	for(var i =0; i < bricks.length; i++){
+		 if (
+            // touching from below
+            ((ball.y + ball.vy - ball.r <= bricks[i].y + bricks[i].height) && 
+            (ball.y - ball.r >= bricks[i].y + bricks[i].height))
+            ||
+            //  touching from above
+            ((ball.y + ball.vy + ball.r >= bricks[i].y) &&
+            (ball.y + ball.r <= bricks[i].y ))){
+            if (ball.x + ball.vx + ball.r >= bricks[i].x && 
+                ball.x + ball.vx - ball.r<= bricks[i].x + bricks[i].width){
+            	bricks.splice(i,1);
+            	return true;
+            }
+    	}
+	}
+	return false;
 }
 
+function collisionXBricks(){
+	for(var i =0; i < bricks.length; i++){
+		if (
+		    //touching from left
+		    ((ball.x + ball.vx + ball.r >= bricks[i].x) &&
+		    (ball.x + ball.r <= bricks[i].x))
+		    ||
+		    // touching from right
+		    ((ball.x + ball.vx - ball.r<= bricks[i].x + bricks[i].width)&&
+		    (ball.x - ball.r >= bricks[i].x + bricks[i].width))
+		    ){      
+		    if ((ball.y + ball.vy -ball.r<= bricks[i].y + bricks[i].height) &&
+		        (ball.y + ball.vy + ball.r >= bricks[i].y)){                                                   
+		    	bricks.splice(i,1);
+		        return true;
+		    	
+		    }
+		}
+	}
+	return false;
+}
 
-function radCollides(obj1,obj2) { 
-	distanceX = Math.abs((obj1.x - obj2.x));
-	distanceY = Math.abs((obj1.y - obj2.y));
+function radCollides(ball,brick) {
+
+	bCenterX = brick.x+brick.width/2;
+	bCenterY = brick.y+brick.height/2;
+
+	distanceX = Math.abs((ball.x - bCenterX));
+	distanceY = Math.abs((ball.y - bCenterY));
 
 	hy = Math.sqrt((distanceX*distanceX) + (distanceY*distanceY));
-	hy -= (obj1.r + obj2.r);
+	hy -= (ball.r + obj2.r);
 	
 	if(hy <=0){
 		return true;
@@ -172,7 +183,6 @@ function radCollides(obj1,obj2) {
 
  function paddleCollides(b, p) { 
  	if(b.x + ball.r >= p.x && b.x - ball.r <=p.x + p.width) { 
- 		console.log("asda");
  		if(b.y >= (p.y - p.height) && p.y > 0){ 
  			return true; 
  		}else if(b.y <= p.height && p.y == 0) {
@@ -199,7 +209,7 @@ function Ball(myX,myY,myVx,myVy,mySize,myColor){
 }
 //create the paddle
 function Paddle(myColor){
-	this.height = 20;
+	this.height = 10;
 	this.width = 150;
 	this.x = W/2 - this.width/2;
 	this.y = H - this.height;
