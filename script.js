@@ -30,8 +30,10 @@ var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
 
 //get the window width
-var W = window.innerWidth; // windows width
-var H = window.innerHeight; // windows height
+// var W = window.innerWidth; // windows width
+// var H = window.innerHeight; // windows height
+var W = 1050; // windows width
+var H = 600; // windows height
 
 
 //set the canvas to the window h w
@@ -61,6 +63,10 @@ var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,4,8,6,bri
 
 var score = new Score(W - 100, 20,"white");
 
+var metalSound = new Audio("metal.wav");
+var explodeSound = new Audio("explode.wav");
+metalSound.duration = 0.3;
+
 placeBricks();
 //-----------------------render loop
 function render(){	
@@ -73,6 +79,7 @@ render();
 //-----------------------game loop
 function update(){
 	//move the ball
+
 		//console.log(ball.vx);
 		// ball.vx+=0.0001;
 		// ball.vy+=0.0001;
@@ -100,6 +107,8 @@ function update(){
 		
 		//paddle/brick collision detection
 		if(paddleCollides(ball,paddle)){
+			metalSound.load();
+			metalSound.play();
 			rndSpeedY();
 			//send ball in the direction of theleft and right edges of the paddle
 			pRightEdge = paddle.x+paddle.width-30;
@@ -131,6 +140,7 @@ document.addEventListener("keypress",changeColor, true);
 //------------------------------collision detection
 
 function collisionYBricks(){
+
 	for(var i =0; i < bricks.length; i++){
 		 if (
             // touching from below
@@ -145,6 +155,7 @@ function collisionYBricks(){
             	bricks.splice(i,1);
             	score.updateScore(10);
             	return true;
+            	
             }
     	}
 	}
@@ -167,6 +178,7 @@ function collisionXBricks(){
 		    	bricks.splice(i,1);
 		    	score.updateScore(10);	
 		        return true;
+
 		    }
 		}
 	}
@@ -210,6 +222,9 @@ function Paddle(myColor){
 	this.draw = function(){
 		ctx.fillStyle = this.c;
 		ctx.fillRect(this.x,this.y,this.width,this.height);
+	}
+	this.calcMySpeed = function(startX){
+		//var distance =  
 	}
 }
 
@@ -361,6 +376,7 @@ function changeColor(e){
 		ball.c = brickColors[4];
 	}
 }
+
 
 function changeWindowSize(e){
 	H = window.innerHeight;
