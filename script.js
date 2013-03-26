@@ -19,7 +19,7 @@ window.cancelRequestAnimFrame = ( function() {
 })();
 /*
 	TODO
-		increase ball speed as play progress
+		increase ball speed as play progresses
 */
 var loopInterval;
 var BRICK_WIDTH = 150;
@@ -55,19 +55,31 @@ var mouse = {}; //mouse object
 var score;
 
 var isGameOver = false;
+var isAdvanceLevel = false;
+var isWin = false;
+
 
 //init paddle
 var paddle = new Paddle(brickColors[0]);
 //init ball
-var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,4,8,6,brickColors[0]);
+ballVX = 4;
+ballVY = 8;
+var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,ballVX,ballVY,6,brickColors[0]);
 
 var score = new Score(W - 100, 20,"white");
+
+//init overlay
+var newLevel = new Overlay(W/2,H/2,'level','');
+var gameOver = new Overlay(W/2,H/2,'gameover');
+var start = new Overlay(W/2,H/2,'start');
 
 var metalSound = new Audio("metal.wav");
 var explodeSound = new Audio("explode.wav");
 metalSound.duration = 0.3;
 
 placeBricks();
+var timer = 0;
+test = new test();
 //-----------------------render loop
 function render(){	
 	// init = requestAnimFrame(render);
@@ -80,53 +92,77 @@ render();
 function update(){
 	//move the ball
 
-		//console.log(ball.vx);
-		// ball.vx+=0.0001;
-		// ball.vy+=0.0001;
-		ball.x += ball.vx;
-		ball.y += ball.vy;
+		if(bricks.length <= 0){
+			isAdvanceLevel = true;
+		}else{
+				//console.log(ball.vx);
+			// ball.vx+=0.0001;
+			// ball.vy+=0.0001;
+			ball.x += ball.vx;
+			ball.y += ball.vy;
 
 
-		// If the ball hits the bottom, run gameOver()
-		if (ball.y-ball.r*2 + ball.r > H){
-			// ball.vy = -ball.vy;
-			// ball.y = H - ball.r; 
-			gameOver();
-		//if the ball hits the top or the top/bottom of a brick reverse y direction	
-		}else if((ball.y < 0 + ball.r) || collisionYBricks()){	
+			// If the ball hits the bottom, run gameOver()
+			if (ball.y-ball.r*2 + ball.r > H){
+				// ball.vy = -ball.vy;
+				// ball.y = H - ball.r; 
+				killGame();
+			//if the ball hits the top or the top/bottom of a brick reverse y direction	
+			}else if((ball.y < 0 + ball.r) || collisionYBricks()){	
 
-			ball.vy = -ball.vy;
-		}
-		//if ball strikes the vertical walls or the left/right of brick, invert the x-velocity vectory of ball
-		if ((ball.x + ball.r > W) || collisionXBricks()) { 
-			ball.vx = -ball.vx;
-		}else if((ball.x - ball.r < 0) || collisionXBricks()){
-			ball.vx = -ball.vx;
-		}
-
-		
-		//paddle/brick collision detection
-		if(paddleCollides(ball,paddle)){
-			metalSound.load();
-			metalSound.play();
-			rndSpeedY();
-			//send ball in the direction of theleft and right edges of the paddle
-			pRightEdge = paddle.x+paddle.width-30;
-			pLeftEdge = paddle.x+30;
-			if((ball.x+ball.r > paddle.x)&&(ball.x-ball.r < pLeftEdge)){
-				rndSpeedX();
-				if(!(ball.vx < 0)){
-					ball.vx = -ball.vx;	
-				}
+				ball.vy = -ball.vy;
 			}
-			if((ball.x < paddle.x+paddle.width)&&(ball.x > pRightEdge)){
-				rndSpeedX();
-				if(!(ball.vx > 0)){
-					ball.vx = -ball.vx;	
-				}
+			//if ball strikes the vertical walls or the left/right of brick, invert the x-velocity vectory of ball
+			if ((ball.x + ball.r > W) || collisionXBricks()) { 
+				ball.vx = -ball.vx;
+			}else if((ball.x - ball.r < 0) || collisionXBricks()){
+				ball.vx = -ball.vx;
 			}
-			ball.vy = -ball.vy;
+
+			
+			//paddle/brick collision detection
+			if(paddleCollides(ball,paddle)){
+				metalSound.load();
+				metalSound.play();
+				rndSpeedY();
+				// rndSpeedX();
+				//TODO random number isn't within range
+				//send ball in the direction of theleft and right edges of the paddle
+				pRightEdge = paddle.x+paddle.width-30;
+				pLeftEdge = paddle.x+30;
+
+				if((ball.x+ball.r > paddle.x)&&(ball.x-ball.r < pLeftEdge)){
+					rndSpeedX();
+					if(!(ball.vx < 0)){
+						ball.vx = -ball.vx;	
+					}
+				}
+
+				if((ball.x < paddle.x+paddle.width)&&(ball.x > pRightEdge)){
+					rndSpeedX();
+					if(!(ball.vx > 0)){
+						ball.vx = -ball.vx;	
+					}
+				}
+
+				//attempting to make it travel the direction paddle is when moving
+				
+				// if((paddle.direction == 'left')&&(ball.vx < 0)){
+				// 	ball.vx = -ball.vx;
+				// }else if(paddle.direction == 'right'){
+				// 	ball.vx = ball.vx;
+				// }
+
+				// if(paddle.x+paddle.width > H)ball.vx = -ball.vx;
+				// if(paddle.x < 0)ball.vx = ball.vx;
+
+				ball.vy = -ball.vy;
+			}
 		}
+		paddle.updateDirection();
+
+
+	
 }
 loopInterval = setInterval("requestAnimFrame(render)", 1000 / targetFps);
 
@@ -152,8 +188,22 @@ function collisionYBricks(){
             (ball.y + ball.r <= bricks[i].y ))){
             if (ball.x + ball.vx + ball.r >= bricks[i].x && 
                 ball.x + ball.vx - ball.r<= bricks[i].x + bricks[i].width){
-            	bricks.splice(i,1);
-            	score.updateScore(10);
+
+            	if((bricks[i].type == "hard")){
+            		console.log(bricks[i].hitCount);
+            		if(bricks[i].hitCount > 1){
+
+            			bricks.splice(i,1);
+            			score.updateScore(10);
+            		}
+            		if(bricks[i] != null)bricks[i].hitCount++;
+
+            	}else{
+            		bricks.splice(i,1);	
+            		score.updateScore(10);
+            	}
+            	
+            	
             	return true;
             	
             }
@@ -174,9 +224,20 @@ function collisionXBricks(){
 		    (ball.x - ball.r >= bricks[i].x + bricks[i].width))
 		    ){      
 		    if ((ball.y + ball.vy -ball.r<= bricks[i].y + bricks[i].height) &&
-		        (ball.y + ball.vy + ball.r >= bricks[i].y)){                                                   
-		    	bricks.splice(i,1);
-		    	score.updateScore(10);	
+		        (ball.y + ball.vy + ball.r >= bricks[i].y)){
+
+		    	if((bricks[i].type == "hard")){
+
+            		if(bricks[i].hitCount > 2){
+            			bricks.splice(i,1);
+            			score.updateScore(10);
+            		}
+            		bricks[i].hitCount++;
+
+            	}else{
+            		bricks.splice(i,1);	
+            		score.updateScore(10);
+            	}
 		        return true;
 
 		    }
@@ -198,6 +259,17 @@ function collisionXBricks(){
 	}
 }
 //------------------------------objects
+
+function test(){
+	this.draw = function(time){
+		ctx.fillStyle = "white";
+		ctx.font = "20px Arial, sans-serif";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText("VX "+ time, 100,50);
+	};
+}
+
 function Ball(myX,myY,myVx,myVy,mySize,myColor){
 	this.x = myX;
 	this.y = myY;
@@ -205,6 +277,7 @@ function Ball(myX,myY,myVx,myVy,mySize,myColor){
 	this.c = myColor;
 	this.vx = myVx;
 	this.vy = myVy;
+	
 	this.draw = function(){
 		ctx.beginPath();
 		ctx.fillStyle = this.c;
@@ -214,17 +287,48 @@ function Ball(myX,myY,myVx,myVy,mySize,myColor){
 }
 //create the paddle
 function Paddle(myColor){
+	this.direction = "";
 	this.height = 10;
 	this.width = 150;
 	this.x = W/2 - this.width/2;
 	this.y = H - this.height;
 	this.c = myColor;
+
+	var oldPos = this.x;
 	this.draw = function(){
 		ctx.fillStyle = this.c;
 		ctx.fillRect(this.x,this.y,this.width,this.height);
 	}
 	this.calcMySpeed = function(startX){
 		//var distance =  
+	}
+	
+	this.updateDirection = function(){
+
+		//TODO screws up timer for level overlay
+
+		// if(this.x > oldPos){
+		// 	timer+=0.001;
+		// 	if(timer>0.005){
+		// 		this.direction = 'right';
+		// 		timer = 0;
+		// 	}
+		// }else if(this.x < oldPos){
+		// 	timer+=0.005;
+		// 	if(timer>0.01){
+		// 		this.direction = 'left';
+		// 		timer = 0;
+		// 	}
+		// }else{
+		// 	timer+=0.005;
+		// 	if(timer>0.01){
+		// 		this.direction = '';
+		// 	}
+		// }	
+		
+		
+
+		oldPos = this.x;
 	}
 }
 
@@ -234,6 +338,13 @@ function Brick(posX,posY,myColor){
 	this.x = posX;
 	this.y = posY;
 	this.c = myColor;
+	this.type ="normal";
+	this.hitCount = 0;
+	if(newLevel.myLevel > 2){
+		if(Math.floor(Math.random()*20) <= 5){
+			this.type = 'hard';
+		}
+	}
 	this.draw =function(){
 		ctx.beginPath();
 		ctx.rect(this.x,this.y,this.width,this.height);
@@ -259,6 +370,55 @@ function Score(posX,posY,myColor){
 	}
 	this.updateScore = function(newScore){
 		this.score += newScore;
+	}
+	this.getScore = function(){
+		return this.score;
+	}
+}
+
+function Overlay(myX,myY,type){
+	this.myLevel = 2;
+	if(type == "level"){
+		this.title = "Next Level " + this.myLevel ;
+		this.description = '';
+	}else if (type=="win"){
+		this.title = "You Win!";
+		this.description = "Press enter to play again";
+	}else if(type == "gameover"){
+		this.title = "GAME OVER";
+		this.description = "Press enter to try again";
+	}else if(type=='start'){
+		this.title = "Brick Breaker Color Madness"; 
+		this.description = "Press enter to try again";
+	}
+
+	this.x = myX;
+	this.y = myY;
+
+	this.updateLevel =function(lev){
+
+		this.myLevel++;
+		if(type == 'level'){
+			this.description = "Level " + this.myLevel;
+		}
+		console.log(this.myLevel);
+	};
+
+	this.draw = function(){
+		ctx.beginPath();
+		ctx.rect(0,0,canvas.width,canvas.height);
+		ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+		ctx.fill();
+
+		ctx.fillStyle = "white";
+		ctx.font = "40px Arial, sans-serif";
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(this.title, this.x, this.y);
+		ctx.fillText(this.description, this.x, this.y+50);
+		ctx.fillStyle = "green";
+		if((type=='gameover')||(type=='win'))ctx.fillText("Your Score: " + score.getScore(), this.x, this.y+100);
+		
 	}
 }
 //------------------------------functions
@@ -289,7 +449,8 @@ function placeBricks(){
 	var leftPadding = (W - 1050)/ 2;
 	var row = 80;
 	var column = leftPadding;
-	for (var i = 0; i < 56; i++) {
+	for (var i = 0; i < 3; i++) {
+	// for (var i = 0; i < 56; i++) {
 		var bColor = Math.floor(Math.random()*5);
 		var brick = new Brick(column,row,brickColors[bColor]);
 		bricks.push(brick);
@@ -302,7 +463,6 @@ function placeBricks(){
 			column+=brick.width;
 		}
 	}
-	
 }
 
 //function to paint the canvas
@@ -319,18 +479,24 @@ function draw(){
 	}
 	ball.draw();
 	score.draw();
+
 	if(isGameOver){
-		drawGameOver();
+		gameOver.draw();
 	}
 	
-}
+	if(isAdvanceLevel){
+		timer += 0.001;
+		console.log(timer);
+		newLevel.draw();
+		if((timer > 0.05)){
+			nextLevel();
+			timer = 0;
+			isAdvanceLevel = false;
+		}
+	}
 
-function drawGameOver(){
-	ctx.fillStyle = "white";
-	ctx.font = "160px Arial, sans-serif";
-	ctx.textAlign = "center";
-	ctx.textBaseline = "middle";
-	ctx.fillText("GAME OVER", W/2, H/2 + 25);
+	test.draw(ball.vx);
+
 }
 
 //------------------------------event handlers
@@ -338,24 +504,35 @@ function trackPosition(e){
 	var distanceR;
 	var distanceL;
 
-
-	paddle.x = mouse.x -paddle.width/2;	
+	if(!isAdvanceLevel)paddle.x = mouse.x -paddle.width/2;	
 	distanceR = W - (paddle.x +paddle.width) ;
 	distanceL = paddle.x;
-
-	if(distanceR <= 0){
-		paddle.x = W -paddle.width;
-	}else if(distanceL <= 0){
-		paddle.x = 0;
+	reducePaddleX = 20;
+	// reduce the bounds of the sides by a little to  correct potential problem of ball getting stuck on the sides 
+	if(distanceR <= -reducePaddleX){
+		paddle.x = W - paddle.width+reducePaddleX;
+	}else if(distanceL <= -reducePaddleX){
+		paddle.x = -reducePaddleX;
 	}
 
 	mouse.x = e.pageX;
 	mouse.y = e.pageY;
 }
 
-function gameOver(){
+function killGame(){
 	isGameOver = true;
 	clearInterval(loopInterval);
+}
+
+function nextLevel(){
+	newLevel.updateLevel();
+	ball.x = paddle.x + paddle.width/2;
+	ball.y = paddle.y-paddle.height-5;
+	placeBricks();
+	if(newLevel.myLevel > 1 && (newLevel.myLevel < 5)){
+		ball.vx = ball.vx * 1.5;		
+		ball.vy = ball.vy * 1.5;		
+	}
 }
 
 function changeColor(e){
@@ -385,15 +562,19 @@ function changeWindowSize(e){
 
 function rndSpeedX(){
 	if(ball.vx < 0){
-		ball.vx = -Math.random()*(4-3+1)+3;
+		// ball.vx = -Math.random()*(4-3+1)+3;
+		ball.vx = (3 + (Math.random() * ((5 - 3) + 1))) * -1;
 	}else{
-		ball.vx = Math.random()*(4-3+1)+3;
+	//	ball.vx = Math.random()*(4-3+1)+3;
+		ball.vx = 3 + (Math.random() * ((5 - 3) + 1));
 	}
 }
+
 function rndSpeedY(){
 	if(ball.vy < 0){
-		ball.vy = -Math.random()*(9-7+1)+7;
+		ball.vy = (7 + (Math.random() * ((9 - 7) + 1)))*-1;
 	}else{
-		ball.vy = Math.random()*(9-7+1)+7;
+		//ball.vy = Math.random()*(9-7+1)+7;
+		ball.vy = 7 + (Math.random() * ((9 - 7) + 1));
 	}
 }
