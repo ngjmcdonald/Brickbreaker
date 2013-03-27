@@ -4,9 +4,9 @@ window.requestAnimFrame = (function(){
 		window.mozRequestAnimationFrame || 
 		window.oRequestAnimationFrame || 
 		window.msRequestAnimationFrame ||
-			function(callback){ 
-				callback(); 
-			}; 
+			function(callback){
+				callback();
+			};
 })();
 
 window.cancelRequestAnimFrame = ( function() { 
@@ -20,6 +20,7 @@ window.cancelRequestAnimFrame = ( function() {
 /*
 	TODO
 		increase ball speed as play progresses
+		Ball is going inside side walls because paddle can
 */
 var loopInterval;
 var BRICK_WIDTH = 150;
@@ -109,7 +110,6 @@ function update(){
 				killGame();
 			//if the ball hits the top or the top/bottom of a brick reverse y direction	
 			}else if((ball.y < 0 + ball.r) || collisionYBricks()){	
-
 				ball.vy = -ball.vy;
 			}
 			//if ball strikes the vertical walls or the left/right of brick, invert the x-velocity vectory of ball
@@ -121,32 +121,43 @@ function update(){
 
 			
 			//paddle/brick collision detection
-			if(paddleCollides(ball,paddle)){
+			if(boxCollides(ball,paddle)){
+			// if(paddleCollides(ball,paddle)){
 				metalSound.load();
 				metalSound.play();
 				rndSpeedY();
-				// rndSpeedX();
-				//TODO random number isn't within range
+				rndSpeedX();
+				
 				//send ball in the direction of theleft and right edges of the paddle
-				pRightEdge = paddle.x+paddle.width-30;
-				pLeftEdge = paddle.x+30;
+				pRightEdge = paddle.x+paddle.width-(paddle.width*0.2); 
+				pLeftEdge = paddle.x+(paddle.width*0.2);
 
 				if((ball.x+ball.r > paddle.x)&&(ball.x-ball.r < pLeftEdge)){
-					rndSpeedX();
 					if(!(ball.vx < 0)){
 						ball.vx = -ball.vx;	
 					}
 				}
 
 				if((ball.x < paddle.x+paddle.width)&&(ball.x > pRightEdge)){
-					rndSpeedX();
 					if(!(ball.vx > 0)){
 						ball.vx = -ball.vx;	
 					}
 				}
 
+
+				if((ball.y+ball.r > paddle.y) && (ball.x <= paddle.x+paddle.width)){
+					if(!(ball.vx > 0)){
+						ball.vx = -ball.vx;	
+					}
+				}
+				if((ball.y+ball.r > paddle.y) && (ball.x+ball.r >= paddle.x)){
+					if(!(ball.vx < 0)){
+						ball.vx = -ball.vx;	
+					}
+				}
+
 				//attempting to make it travel the direction paddle is when moving
-				
+
 				// if((paddle.direction == 'left')&&(ball.vx < 0)){
 				// 	ball.vx = -ball.vx;
 				// }else if(paddle.direction == 'right'){
@@ -158,6 +169,9 @@ function update(){
 
 				ball.vy = -ball.vy;
 			}
+
+			
+
 		}
 		paddle.updateDirection();
 
@@ -251,12 +265,19 @@ function collisionXBricks(){
  	if(b.x + ball.r >= p.x && b.x - ball.r <=p.x + p.width) { 
  		if(b.y >= (p.y - p.height) && p.y > 0){ 
  			return true; 
- 		}else if(b.y <= p.height && p.y == 0) {
+ 		}else if(b.y+b.r < p.height && p.y == 0) {
         	return true;
     	}else {
     		return false;	
     	}
 	}
+}
+
+function boxCollides(b,p){
+	 return (b.x-b.r <= p.x + p.width && //1left is to the left 2right
+        p.x-b.r <= b.x + b.r && //2left is to the left of 1 right
+    	b.y-b.r <= p.y + p.height && // 1top is to the top of 2bottom
+        p.y-b.r <= b.y + b.r)
 }
 //------------------------------objects
 
@@ -449,7 +470,7 @@ function placeBricks(){
 	var leftPadding = (W - 1050)/ 2;
 	var row = 80;
 	var column = leftPadding;
-	for (var i = 0; i < 3; i++) {
+	for (var i = 0; i < 1; i++) {
 	// for (var i = 0; i < 56; i++) {
 		var bColor = Math.floor(Math.random()*5);
 		var brick = new Brick(column,row,brickColors[bColor]);
@@ -526,12 +547,13 @@ function killGame(){
 
 function nextLevel(){
 	newLevel.updateLevel();
+	paddle.width = paddle.width * 0.9;
 	ball.x = paddle.x + paddle.width/2;
-	ball.y = paddle.y-paddle.height-5;
+	ball.y = paddle.y-paddle.height-10;
 	placeBricks();
 	if(newLevel.myLevel > 1 && (newLevel.myLevel < 5)){
-		ball.vx = ball.vx * 1.5;		
-		ball.vy = ball.vy * 1.5;		
+		// ball.vx = ball.vx * 2;		
+		// ball.vy = ball.vy * 2;		
 	}
 }
 
@@ -561,20 +583,25 @@ function changeWindowSize(e){
 }
 
 function rndSpeedX(){
+
+	var maxX = ballVX+1;
+	var minX = ballVX-1;
+
 	if(ball.vx < 0){
-		// ball.vx = -Math.random()*(4-3+1)+3;
-		ball.vx = (3 + (Math.random() * ((5 - 3) + 1))) * -1;
+		ball.vx = (minX + (Math.random() * ((maxX - minX) + 1))) * -1;
 	}else{
-	//	ball.vx = Math.random()*(4-3+1)+3;
-		ball.vx = 3 + (Math.random() * ((5 - 3) + 1));
+		ball.vx = minX + (Math.random() * ((maxX - minX) + 1));
 	}
 }
 
 function rndSpeedY(){
+
+	var maxY = ballVY+1;
+	var minY = ballVY-1;
+
 	if(ball.vy < 0){
-		ball.vy = (7 + (Math.random() * ((9 - 7) + 1)))*-1;
+		ball.vy = (minY + (Math.random() * ((maxY - minY) + 1)))*-1;
 	}else{
-		//ball.vy = Math.random()*(9-7+1)+7;
-		ball.vy = 7 + (Math.random() * ((9 - 7) + 1));
+		ball.vy = minY + (Math.random() * ((maxY - minY) + 1));
 	}
 }
