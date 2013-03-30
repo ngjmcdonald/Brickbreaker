@@ -79,7 +79,6 @@ explodeSound.duration = 0.05;
 
 placeBricks();
 var timer = 0;
-test = new test();
 //-----------------------render loop
 function render(){	
 	// init = requestAnimFrame(render);
@@ -175,7 +174,7 @@ loopInterval = setInterval("requestAnimFrame(render)", 1000 / targetFps);
 canvas.addEventListener("mousemove",trackPosition, true);
 window.addEventListener("resize",changeWindowSize, true);
 document.addEventListener("keypress",changeColor, true);
-document.addEventListener("click",function(){isGameStart = false}, true);
+document.addEventListener("click",function(){isGameStart = false; console.log("asd");}, true);
 
 // --------------------------------------------------------functions/classes
 
@@ -307,16 +306,10 @@ function Paddle(myColor){
 	this.y = H - this.height;
 	this.c = myColor;
 
-	var oldPos = this.x;
 	this.draw = function(){
 		ctx.fillStyle = this.c;
 		ctx.fillRect(this.x,this.y,this.width,this.height);
 	}
-	this.calcMySpeed = function(startX){
-		//var distance =  
-	}
-	
-	
 }
 
 function Brick(posX,posY,myColor){
@@ -494,8 +487,6 @@ function draw(){
 	if(isGameStart){
 		start.draw();
 	}
-
-	test.draw(ball.vx);
 
 }
 
