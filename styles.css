@@ -1,5 +1,13 @@
 body{
 	padding: 0; 
 	margin: 0; 
-	overflow: hidden;
+}
+#description{
+	margin:auto;
+	width:1050px;
+	padding:1.1em;
+}
+#description p{
+	font-size:1.2em;
+
 }

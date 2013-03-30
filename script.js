@@ -1,3 +1,5 @@
+//---------------------------------------game loop functions
+
 window.requestAnimFrame = (function(){ 
 	return window.requestAnimationFrame || 
 		window.webkitRequestAnimationFrame || 
@@ -17,13 +19,16 @@ window.cancelRequestAnimFrame = ( function() {
 		window.msCancelRequestAnimationFrame || 
 		clearTimeout 
 })();
-/*
-	TODO
-		Ball is going inside side walls because paddle can
-*/
+
+//---------------------------------properties/variables
+//variable to hold loop interval
 var loopInterval;
+//contstants for brick sizes and ball speed and the fps
 var BRICK_WIDTH = 150;
 var BRICK_HEIGHT = 40;
+var ballVX = 4;
+var ballVY = -8;
+var TARGET_FPS = 60;
 
 //init the canvas element
 var canvas = document.getElementById("canvas");
@@ -39,9 +44,6 @@ canvas.width = W;
 canvas.height = H;
 
 
-var targetFps = 60;
-
-
 //fill the canvas black
 ctx.fillRect(0,0,W,H);
 
@@ -51,7 +53,7 @@ var brickColors = ["white",'grey'];
 var keyColors = [122,120];
 var mouse = {}; //mouse object
 var score;
-
+//booleans variables for game over, new levels 
 var isGameOver = false;
 var isAdvanceLevel = false;
 var isWin = false;
@@ -61,44 +63,48 @@ var isGameStart = true;
 //init paddle
 var paddle = new Paddle(brickColors[0]);
 //init ball
-ballVX = 4;
-ballVY = -8;
 var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,ballVX,ballVY,6,brickColors[0]);
-
+//init score keeper
 var score = new Score(W - 100, 20,"white");
 
-//init overlay
+//init overlays
 var newLevel = new Overlay(W/2,H/2,'level','');
 var gameOver = new Overlay(W/2,H/2,'gameover');
 var start = new Overlay(W/2,H/2,'start');
-
+//sound objects
 var metalSound = new Audio("metal.wav");
 var explodeSound = new Audio("explode.wav");
+//cut the the duration of play
 metalSound.duration = 0.05;
 explodeSound.duration = 0.05;
-
+// place all the bricks
 placeBricks();
+//set the timer variable to zero
 var timer = 0;
-//-----------------------render loop
+//-------------------------------------------game loop
 function render(){	
-	// init = requestAnimFrame(render);
+	//call the update and draw methods
 	update();
 	draw();
 }
 render();
-
-//-----------------------game loop
+// method to update all objects and variables
 function update(){
-	//move the ball
+	//check if the game has started
 	if(!isGameStart){
+		//check if there are still bricks left
 		if(bricks.length <= 0){
+			// if not advance to the next level
 			isAdvanceLevel = true;
-		}else{
+
+		}else{// else continue game
+
+			//move the ball
 			ball.x += ball.vx;
 			ball.y += ball.vy;
 
 
-			// If the ball hits the bottom, run gameOver()
+			// If the ball hits the bottom, run call the game over method
 			if (ball.y-ball.r*2 + ball.r > H){
 				killGame();
 			//if the ball hits the top or the top/bottom of a brick reverse y direction	
@@ -107,6 +113,7 @@ function update(){
 				if(ball.y <= 0 + ball.r){
 					ball.y = 0 + ball.r;	
 				}
+				//play sounds of collision
 				explodeSound.load();
 				explodeSound.play();
 				
@@ -117,6 +124,7 @@ function update(){
 				if(ball.x + ball.r >= W){
 					ball.x = W - ball.r;
 				}
+				//play sounds of collision
 				explodeSound.load();
 				explodeSound.play();
 
@@ -125,13 +133,14 @@ function update(){
 				if(ball.x + ball.r <= 0){
 					ball.x = 0 + ball.r;
 				}
+				//play sounds of collision
 				explodeSound.load();
 				explodeSound.play();
 			}
 
-			//paddle/brick collision detection
+			//----------------paddle/brick collision detection
 			if(boxCollides(ball,paddle)){
-			// if(paddleCollides(ball,paddle)){
+				//play sounds of collision
 				metalSound.load();
 				metalSound.play();
 				
@@ -139,47 +148,56 @@ function update(){
 				pRightEdge = paddle.x+paddle.width-(paddle.width*0.1);
 				pLeftEdge = paddle.x+(paddle.width*0.1);
 
-				if((ball.x > paddle.x)&&(ball.x-ball.r < pLeftEdge)){
+				//if the ball hits the left edge send it in the left direction
+				if((ball.x+ ball.r > paddle.x)&&(ball.x-ball.r < pLeftEdge)){
 					if(!(ball.vx < 0)){
 						ball.vx = -ball.vx;	
 					}
 				}
-				if((ball.x < paddle.x+paddle.width)&&(ball.x > pRightEdge)){
+				//if the ball hits the right edge send it in the right direction
+				if((ball.x-ball.r < paddle.x+paddle.width)&&(ball.x > pRightEdge)){
 					if(!(ball.vx > 0)){
-						//ball.vx = -ball.vx;	
 						ball.vx = Math.abs(ball.vx);	
+
 					}
 				}
 
+				//check if the ball is below the paddle
 				if(!(ball.y+ball.r > paddle.y)){
+					//if it isn't reverse the y direction and send it back up 
 					ball.y = paddle.y-ball.r;
 					ball.vy = -ball.vy;	
-					console.log("above");
 				}else{
-					console.log("below");
+					// if it isn't send the back in the opposite x direction and let it fall below the paddle
 					if(ball.vx > 0){
 						ball.vx = Math.abs(ball.vx);	
 					}else{
 						ball.vx = -ball.vx;
 					}
 				}
+
+				// randomize the x speed
 				rndSpeedX();				
 			}
 		}
 	}
 }
-loopInterval = setInterval("requestAnimFrame(render)", 1000 / targetFps);
+// call the game loop functions 
+loopInterval = setInterval("requestAnimFrame(render)", 1000 / TARGET_FPS);
 
 //---------------------------------------------------------eventsLisenters
+//mouse movement for the mouse position
 canvas.addEventListener("mousemove",trackPosition, true);
-window.addEventListener("resize",changeWindowSize, true);
+// keys pressed to change color of ball and detect enter when game is over
 document.addEventListener("keypress",changeColor, true);
+// click event to start the game
 document.addEventListener("click",function(){isGameStart = false; console.log("asd");}, true);
 
 // --------------------------------------------------------functions/classes
 
 //------------------------------collision detection
 
+//method to check for collision with bricks on the y axis
 function collisionYBricks(){
 
 	for(var i =0; i < bricks.length; i++){
@@ -191,19 +209,24 @@ function collisionYBricks(){
             //  touching from above
             ((ball.y + ball.vy + ball.r >= bricks[i].y) &&
             (ball.y + ball.r <= bricks[i].y ))){
+		 	//within the x axis as well
             if (ball.x + ball.vx + ball.r >= bricks[i].x && 
                 ball.x + ball.vx - ball.r<= bricks[i].x + bricks[i].width){
-            	console.log(ball.c);
+            	// collision detected
+            	// check if colors match
             	if(ball.c == bricks[i].c){
+            		//check if the brick type has advanced
 	            	if((bricks[i].type == "hard")){
+	            		// if so increase the number of hits it takes to destroy it
 	            		if(bricks[i].hitCount > 1){
-
+	            			//remove the brick and update the score
 	            			bricks.splice(i,1);
 	            			score.updateScore(10);
 	            		}
 	            		if(bricks[i] != null)bricks[i].hitCount++;
 
 	            	}else{
+	            		//remove the brick and update the score
 	            		bricks.splice(i,1);	
 	            		score.updateScore(10);
 	            	}
@@ -227,18 +250,24 @@ function collisionXBricks(){
 		    ((ball.x + ball.vx - ball.r<= bricks[i].x + bricks[i].width)&&
 		    (ball.x - ball.r >= bricks[i].x + bricks[i].width))
 		    ){      
+			//within the y axis as well
 		    if ((ball.y + ball.vy -ball.r<= bricks[i].y + bricks[i].height) &&
 		        (ball.y + ball.vy + ball.r >= bricks[i].y)){
+		    	// collision detected
+            	// check if colors match
 		    	if(ball.c == bricks[i].c){
+		    		//check if the brick type has advanced
 			    	if((bricks[i].type == "hard")){
-
-	            		if(bricks[i].hitCount > 2){
+			    		// if so increase the number of hits it takes to destroy it
+	            		if(bricks[i].hitCount > 1){
+	            			//remove the brick and update the score
 	            			bricks.splice(i,1);
 	            			score.updateScore(10);
 	            		}
-	            		bricks[i].hitCount++;
+	            		if(bricks[i] != null)bricks[i].hitCount++;
 
 	            	}else{
+	            		//remove the brick and update the score
 	            		bricks.splice(i,1);	
 	            		score.updateScore(10);
 	            	}
@@ -250,46 +279,29 @@ function collisionXBricks(){
 	}
 	return false;
 }
-
-
- function paddleCollides(b, p) { 
- 	if(b.x + ball.r >= p.x && b.x - ball.r <=p.x + p.width) { 
- 		if(b.y >= (p.y - p.height) && p.y > 0){ 
- 			return true; 
- 		}else if(b.y+b.r < p.height && p.y == 0) {
-        	return true;
-    	}else {
-    		return false;	
-    	}
-	}
-}
-
+// method for bounding box collision detection, used for paddle/ ball
 function boxCollides(b,p){
 	 return (b.x-b.r <= p.x + p.width && //1left is to the left 2right
         p.x-b.r <= b.x + b.r && //2left is to the left of 1 right
     	b.y-b.r <= p.y + p.height && // 1top is to the top of 2bottom
         p.y-b.r <= b.y + b.r)
 }
-//------------------------------objects
+//---------------------------------------------------objects
 
-function test(){
-	this.draw = function(time){
-		ctx.fillStyle = "white";
-		ctx.font = "20px Arial, sans-serif";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText("VX "+ time, 100,50);
-	};
-}
 
+//----------ball object
 function Ball(myX,myY,myVx,myVy,mySize,myColor){
+	//x and y properties
 	this.x = myX;
 	this.y = myY;
+	//radius property
 	this.r = mySize;
+	//color property
 	this.c = myColor;
+	//speed properties
 	this.vx = myVx;
 	this.vy = myVy;
-	
+	//method to draw ball
 	this.draw = function(){
 		ctx.beginPath();
 		ctx.fillStyle = this.c;
@@ -297,34 +309,45 @@ function Ball(myX,myY,myVx,myVy,mySize,myColor){
 		ctx.fill();
 	};
 }
-//create the paddle
+//--------------- paddle object 
 function Paddle(myColor){
+	// direction property
 	this.direction = "";
+	// width and height propertys
 	this.height = 20;
 	this.width = 150;
+	// position properties
 	this.x = W/2 - this.width/2;
 	this.y = H - this.height;
+	// color property
 	this.c = myColor;
-
+	//draw method
 	this.draw = function(){
 		ctx.fillStyle = this.c;
 		ctx.fillRect(this.x,this.y,this.width,this.height);
 	}
 }
-
+//--------------- brick object 
 function Brick(posX,posY,myColor){
+	//size properties
 	this.height=40;
 	this.width = 150;
+	//position properties
 	this.x = posX;
 	this.y = posY;
+	//color propertie
 	this.c = myColor;
+	//difficulty and hits recieved property
 	this.type ="normal";
 	this.hitCount = 0;
+	//check if levels above 2
 	if(newLevel.myLevel > 2){
+		//randomly choose if this brick will be a hard to destroy brick
 		if(Math.floor(Math.random()*20) <= 5){
 			this.type = 'hard';
 		}
 	}
+	//method to draw 
 	this.draw =function(){
 		ctx.beginPath();
 		ctx.rect(this.x,this.y,this.width,this.height);
@@ -335,7 +358,7 @@ function Brick(posX,posY,myColor){
 		ctx.stroke();
 	}
 }
-
+//--------------- object to keep track of the score
 function Score(posX,posY,myColor){
 	this.score = 0;
 	this.x = posX;
@@ -497,7 +520,7 @@ function trackPosition(e){
 		var distanceL;
 
 		if(!isAdvanceLevel)paddle.x = mouse.x -paddle.width/2;	
-		distanceR = W - (paddle.x +paddle.width) ;
+		distanceR = W - (paddle.x +paddle.width);
 		distanceL = paddle.x;
 		reducePaddleX = 20;
 		// reduce the bounds of the sides by a little to  correct potential problem of ball getting stuck on the sides 
@@ -507,8 +530,12 @@ function trackPosition(e){
 			paddle.x = -reducePaddleX;
 		}
 
-		mouse.x = e.pageX;
-		mouse.y = e.pageY;
+		var canvasOffset = $("#canvas").offset();
+        var offsetX = canvasOffset.left;
+        var offsetY = canvasOffset.top;
+
+		mouse.x = parseInt(e.clientX - offsetX);
+        mouse.y = parseInt(e.clientY - offsetY);
 	}
 }
 
@@ -529,7 +556,7 @@ function nextLevel(){
 
 function restart(){
 	isGameStart = true;
-	loopInterval = setInterval("requestAnimFrame(render)", 1000 / targetFps);
+	loopInterval = setInterval("requestAnimFrame(render)", 1000 / TARGET_FPS);
 	newLevel.myLevel = 1;
 	paddle.x = W/2 - paddle.width/2;
 	ball.x = paddle.x + paddle.width/2;
@@ -541,7 +568,6 @@ function restart(){
 }
 
 function changeColor(e){
-	console.log(e.keyCode);
 	if(e.keyCode == 32){
 		if(paddle.c == brickColors[0]){
 			paddle.c = brickColors[1];	
@@ -557,11 +583,6 @@ function changeColor(e){
 	}
 }
 
-
-function changeWindowSize(e){
-	H = window.innerHeight;
-	W = window.innerWidth;
-}
 
 function rndSpeedX(){
 
