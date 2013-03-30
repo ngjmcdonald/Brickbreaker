@@ -19,7 +19,6 @@ window.cancelRequestAnimFrame = ( function() {
 })();
 /*
 	TODO
-		increase ball speed as play progresses
 		Ball is going inside side walls because paddle can
 */
 var loopInterval;
@@ -31,8 +30,6 @@ var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d");
 
 //get the window width
-// var W = window.innerWidth; // windows width
-// var H = window.innerHeight; // windows height
 var W = 1050; // windows width
 var H = 600; // windows height
 
@@ -50,8 +47,8 @@ ctx.fillRect(0,0,W,H);
 
 //declare objects 
 var bricks = [];
-var brickColors = ["red","yellow","green","blue","purple"];
-var keyColors = [122,120,99,118,98];
+var brickColors = ["white",'grey'];
+var keyColors = [122,120];
 var mouse = {}; //mouse object
 var score;
 
@@ -63,8 +60,8 @@ var isWin = false;
 //init paddle
 var paddle = new Paddle(brickColors[0]);
 //init ball
-ballVX = 4;
-ballVY = 8;
+ballVX = -4;
+ballVY = -8;
 var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,ballVX,ballVY,6,brickColors[0]);
 
 var score = new Score(W - 100, 20,"white");
@@ -76,7 +73,7 @@ var start = new Overlay(W/2,H/2,'start');
 
 var metalSound = new Audio("metal.wav");
 var explodeSound = new Audio("explode.wav");
-metalSound.duration = 0.3;
+metalSound.duration = 0.05;
 
 placeBricks();
 var timer = 0;
@@ -105,31 +102,42 @@ function update(){
 
 			// If the ball hits the bottom, run gameOver()
 			if (ball.y-ball.r*2 + ball.r > H){
-				// ball.vy = -ball.vy;
-				// ball.y = H - ball.r; 
 				killGame();
 			//if the ball hits the top or the top/bottom of a brick reverse y direction	
-			}else if((ball.y < 0 + ball.r) || collisionYBricks()){	
+			}else if((ball.y <= 0 + ball.r) || collisionYBricks()){	
 				ball.vy = -ball.vy;
+				if(ball.y <= 0 + ball.r){
+					ball.y = 0 + ball.r;	
+				}
+				
 			}
 			//if ball strikes the vertical walls or the left/right of brick, invert the x-velocity vectory of ball
-			if ((ball.x + ball.r > W) || collisionXBricks()) { 
+			if ((ball.x + ball.r >= W) || collisionXBricks()) { 
+				console.log("bumpRight");
 				ball.vx = -ball.vx;
-			}else if((ball.x - ball.r < 0) || collisionXBricks()){
+				if(ball.x + ball.r >= W){
+					ball.x = W - ball.r;
+				}
+				console.log(ball.vx + ": "+ ball.vy);
+			}else if((ball.x - ball.r <= 0) || collisionXBricks()){
 				ball.vx = -ball.vx;
+				if(ball.x + ball.r <= 0){
+					ball.x = 0 + ball.r;
+				}
+				console.log("bumpLeft");
+				console.log(ball.vx + ": "+ ball.vy);
 			}
 
+			
 			
 			//paddle/brick collision detection
 			if(boxCollides(ball,paddle)){
 			// if(paddleCollides(ball,paddle)){
 				metalSound.load();
 				metalSound.play();
-				rndSpeedY();
-				rndSpeedX();
 				
 				//send ball in the direction of theleft and right edges of the paddle
-				pRightEdge = paddle.x+paddle.width-(paddle.width*0.2); 
+				pRightEdge = paddle.x+paddle.width-(paddle.width*0.2);
 				pLeftEdge = paddle.x+(paddle.width*0.2);
 
 				if((ball.x+ball.r > paddle.x)&&(ball.x-ball.r < pLeftEdge)){
@@ -137,46 +145,31 @@ function update(){
 						ball.vx = -ball.vx;	
 					}
 				}
-
-				if((ball.x < paddle.x+paddle.width)&&(ball.x > pRightEdge)){
+				if((ball.x-ball.r < paddle.x+paddle.width)&&(ball.x > pRightEdge)){
 					if(!(ball.vx > 0)){
-						ball.vx = -ball.vx;	
+						//ball.vx = -ball.vx;	
+						ball.vx = Math.abs(ball.vx);	
 					}
 				}
 
-
-				if((ball.y+ball.r > paddle.y) && (ball.x <= paddle.x+paddle.width)){
-					if(!(ball.vx > 0)){
-						ball.vx = -ball.vx;	
+				if(!(ball.y+ball.r > paddle.y)){
+					ball.y = paddle.y-ball.r;
+					ball.vy = -ball.vy;	
+					console.log("above");
+				}else{
+					console.log("below");
+					if(ball.vx > 0){
+						ball.vx = Math.abs(ball.vx);	
+					}else{
+						ball.vx = -ball.vx;
 					}
+
 				}
-				if((ball.y+ball.r > paddle.y) && (ball.x+ball.r >= paddle.x)){
-					if(!(ball.vx < 0)){
-						ball.vx = -ball.vx;	
-					}
-				}
-
-				//attempting to make it travel the direction paddle is when moving
-
-				// if((paddle.direction == 'left')&&(ball.vx < 0)){
-				// 	ball.vx = -ball.vx;
-				// }else if(paddle.direction == 'right'){
-				// 	ball.vx = ball.vx;
-				// }
-
-				// if(paddle.x+paddle.width > H)ball.vx = -ball.vx;
-				// if(paddle.x < 0)ball.vx = ball.vx;
-
-				ball.vy = -ball.vy;
+				
+				rndSpeedX();				
 			}
-
-			
-
 		}
 		paddle.updateDirection();
-
-
-	
 }
 loopInterval = setInterval("requestAnimFrame(render)", 1000 / targetFps);
 
@@ -202,22 +195,23 @@ function collisionYBricks(){
             (ball.y + ball.r <= bricks[i].y ))){
             if (ball.x + ball.vx + ball.r >= bricks[i].x && 
                 ball.x + ball.vx - ball.r<= bricks[i].x + bricks[i].width){
+            	console.log(bricks[i].c + ": "+ball.c);
+            	if(ball.c == bricks[i].c){
+	            	if((bricks[i].type == "hard")){
+	            		console.log(bricks[i].hitCount);
+	            		if(bricks[i].hitCount > 1){
 
-            	if((bricks[i].type == "hard")){
-            		console.log(bricks[i].hitCount);
-            		if(bricks[i].hitCount > 1){
+	            			bricks.splice(i,1);
+	            			score.updateScore(10);
+	            		}
+	            		if(bricks[i] != null)bricks[i].hitCount++;
 
-            			bricks.splice(i,1);
-            			score.updateScore(10);
-            		}
-            		if(bricks[i] != null)bricks[i].hitCount++;
-
-            	}else{
-            		bricks.splice(i,1);	
-            		score.updateScore(10);
+	            	}else{
+	            		bricks.splice(i,1);	
+	            		score.updateScore(10);
+	            	}
             	}
-            	
-            	
+            	console.log("hittingY");
             	return true;
             	
             }
@@ -239,19 +233,21 @@ function collisionXBricks(){
 		    ){      
 		    if ((ball.y + ball.vy -ball.r<= bricks[i].y + bricks[i].height) &&
 		        (ball.y + ball.vy + ball.r >= bricks[i].y)){
+		    	if(ball.c == bricks[i].c){
+			    	if((bricks[i].type == "hard")){
 
-		    	if((bricks[i].type == "hard")){
+	            		if(bricks[i].hitCount > 2){
+	            			bricks.splice(i,1);
+	            			score.updateScore(10);
+	            		}
+	            		bricks[i].hitCount++;
 
-            		if(bricks[i].hitCount > 2){
-            			bricks.splice(i,1);
-            			score.updateScore(10);
-            		}
-            		bricks[i].hitCount++;
-
-            	}else{
-            		bricks.splice(i,1);	
-            		score.updateScore(10);
+	            	}else{
+	            		bricks.splice(i,1);	
+	            		score.updateScore(10);
+	            	}
             	}
+            	console.log("Hitting");
 		        return true;
 
 		    }
@@ -309,7 +305,7 @@ function Ball(myX,myY,myVx,myVy,mySize,myColor){
 //create the paddle
 function Paddle(myColor){
 	this.direction = "";
-	this.height = 10;
+	this.height = 20;
 	this.width = 150;
 	this.x = W/2 - this.width/2;
 	this.y = H - this.height;
@@ -400,7 +396,7 @@ function Score(posX,posY,myColor){
 function Overlay(myX,myY,type){
 	this.myLevel = 2;
 	if(type == "level"){
-		this.title = "Next Level " + this.myLevel ;
+		this.title = "Next Level";
 		this.description = '';
 	}else if (type=="win"){
 		this.title = "You Win!";
@@ -416,19 +412,22 @@ function Overlay(myX,myY,type){
 	this.x = myX;
 	this.y = myY;
 
+	if(type == 'level'){
+		this.description = "Level " + this.myLevel;
+	}
+
 	this.updateLevel =function(lev){
 
 		this.myLevel++;
 		if(type == 'level'){
 			this.description = "Level " + this.myLevel;
 		}
-		console.log(this.myLevel);
 	};
 
 	this.draw = function(){
 		ctx.beginPath();
 		ctx.rect(0,0,canvas.width,canvas.height);
-		ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+		ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
 		ctx.fill();
 
 		ctx.fillStyle = "white";
@@ -472,11 +471,11 @@ function placeBricks(){
 	var column = leftPadding;
 	for (var i = 0; i < 1; i++) {
 	// for (var i = 0; i < 56; i++) {
-		var bColor = Math.floor(Math.random()*5);
-		var brick = new Brick(column,row,brickColors[bColor]);
+		var bColor = Math.floor(Math.random()*2);
+		console.log(bColor+ "Brick COlor");
+		var myColor = brickColors[bColor];
+		var brick = new Brick(column,row,myColor);
 		bricks.push(brick);
-		
-
 		if(column > (1000+leftPadding)-brick.width){
 			column =leftPadding;
 			row+=brick.height;
@@ -547,32 +546,29 @@ function killGame(){
 
 function nextLevel(){
 	newLevel.updateLevel();
-	paddle.width = paddle.width * 0.9;
+	if(!newLevel.myLevel > 5)paddle.width = paddle.width * 0.9;
+	paddle.x = W/2 - paddle.width/2;
 	ball.x = paddle.x + paddle.width/2;
-	ball.y = paddle.y-paddle.height-10;
+	ball.y = paddle.y-paddle.height-20;
+	ball.vy = ball.vy * -1;
+
+
+
 	placeBricks();
-	if(newLevel.myLevel > 1 && (newLevel.myLevel < 5)){
-		// ball.vx = ball.vx * 2;		
-		// ball.vy = ball.vy * 2;		
-	}
 }
 
 function changeColor(e){
-	if(e.keyCode == keyColors[0]){
-		paddle.c = brickColors[0];
-		ball.c = brickColors[0];
-	}else if(e.keyCode == keyColors[1]){
-		paddle.c = brickColors[1];
-		ball.c = brickColors[1];
-	}else if(e.keyCode == keyColors[2]){
-		paddle.c = brickColors[2];
-		ball.c = brickColors[2];
-	}else if(e.keyCode == keyColors[3]){
-		paddle.c = brickColors[3];
-		ball.c = brickColors[3];
-	}else if(e.keyCode == keyColors[4]){
-		paddle.c = brickColors[4];
-		ball.c = brickColors[4];
+	console.log(e.keyCode);
+	if(e.keyCode == 32){
+		if(paddle.c == brickColors[0]){
+			paddle.c = brickColors[1];	
+			ball.c = brickColors[1];
+		}else{
+			ball.c = brickColors[0];
+			paddle.c = brickColors[0];	
+		}
+		
+		
 	}
 }
 
@@ -588,20 +584,26 @@ function rndSpeedX(){
 	var minX = ballVX-1;
 
 	if(ball.vx < 0){
-		ball.vx = (minX + (Math.random() * ((maxX - minX) + 1))) * -1;
-	}else{
+		console.log(ball.vx+"b");
 		ball.vx = minX + (Math.random() * ((maxX - minX) + 1));
+		console.log(ball.vx+"a");
+	}else{
+		ball.vx = (minX + (Math.random() * ((maxX - minX) + 1))) * -1;
+		
 	}
+
 }
 
 function rndSpeedY(){
 
 	var maxY = ballVY+1;
 	var minY = ballVY-1;
+	console.log(ballVY);
 
 	if(ball.vy < 0){
-		ball.vy = (minY + (Math.random() * ((maxY - minY) + 1)))*-1;
-	}else{
 		ball.vy = minY + (Math.random() * ((maxY - minY) + 1));
+	}else{
+		ball.vy = (minY + (Math.random() * ((maxY - minY) + 1)))*-1;
+		
 	}
 }
