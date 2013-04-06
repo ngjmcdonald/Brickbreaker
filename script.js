@@ -26,6 +26,7 @@ var loopInterval;
 //contstants for brick sizes and ball speed and the fps
 var BRICK_WIDTH = 150;
 var BRICK_HEIGHT = 40;
+var NUM_OF_BRICKS = 49;
 var ballVX = 4;
 var ballVY = -8;
 var TARGET_FPS = 60;
@@ -61,19 +62,18 @@ var isGameStart = true;
 
 
 //init paddle
-var paddle = new Paddle(brickColors[0]);
+var paddle = new Paddle(brickColors[0],ctx);
 //init ball
-var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,ballVX,ballVY,6,brickColors[0]);
+var ball = new Ball(paddle.x + paddle.width/2,paddle.y-paddle.height-5,ballVX,ballVY,6,brickColors[0],ctx,canvas);
 //init score keeper
-var score = new Score(W - 100, 20,"white");
-
+var score = new Score(W - 100, 20,"white",ctx,canvas);
 //init overlays
-var newLevel = new Overlay(W/2,H/2,'level','');
-var gameOver = new Overlay(W/2,H/2,'gameover');
-var start = new Overlay(W/2,H/2,'start');
+var newLevel = new Overlay(W/2,H/2,'level',ctx,canvas,score);
+var gameOver = new Overlay(W/2,H/2,'gameover',ctx,canvas,score);
+var start = new Overlay(W/2,H/2,'start',ctx,canvas,score);
 //sound objects
-var metalSound = new Audio("metal.wav");
-var explodeSound = new Audio("explode.wav");
+var metalSound = new Audio("assets/sound/metal.wav");
+var explodeSound = new Audio("assets/sound/explode.wav");
 //cut the the duration of play
 metalSound.duration = 0.05;
 explodeSound.duration = 0.05;
@@ -103,6 +103,7 @@ function update(){
 			ball.x += ball.vx;
 			ball.y += ball.vy;
 
+			//TODO ----------------change all collision detection with ball to angle of reflection 
 
 			// If the ball hits the bottom, run call the game over method
 			if (ball.y-ball.r*2 + ball.r > H){
@@ -118,7 +119,8 @@ function update(){
 				explodeSound.play();
 				
 			}
-			//if ball strikes the vertical walls or the left/right of brick, invert the x-velocity vectory of ball
+			//if ball strikes the vertical walls or the left/right of brick, 
+			// invert the x-velocity vectory of ball
 			if ((ball.x + ball.r >= W) || collisionXBricks()) { 
 				ball.vx = -ball.vx;
 				if(ball.x + ball.r >= W){
@@ -185,17 +187,15 @@ function update(){
 // call the game loop functions 
 loopInterval = setInterval("requestAnimFrame(render)", 1000 / TARGET_FPS);
 
-//---------------------------------------------------------eventsLisenters
+//---------------------------------------------------------EVENT LISTENERS
 //mouse movement for the mouse position
 canvas.addEventListener("mousemove",trackPosition, true);
 // keys pressed to change color of ball and detect enter when game is over
 document.addEventListener("keypress",changeColor, true);
 // click event to start the game
-document.addEventListener("click",function(){isGameStart = false; console.log("asd");}, true);
+document.addEventListener("click",function(){isGameStart = false; }, true);
 
-// --------------------------------------------------------functions/classes
-
-//------------------------------collision detection
+//---------------------------------------collision detection methods
 
 //method to check for collision with bricks on the y axis
 function collisionYBricks(){
@@ -286,160 +286,17 @@ function boxCollides(b,p){
     	b.y-b.r <= p.y + p.height && // 1top is to the top of 2bottom
         p.y-b.r <= b.y + b.r)
 }
-//---------------------------------------------------objects
 
+//-------------------------------------------------------------PRIVATE METHODS
 
-//----------ball object
-function Ball(myX,myY,myVx,myVy,mySize,myColor){
-	//x and y properties
-	this.x = myX;
-	this.y = myY;
-	//radius property
-	this.r = mySize;
-	//color property
-	this.c = myColor;
-	//speed properties
-	this.vx = myVx;
-	this.vy = myVy;
-	//method to draw ball
-	this.draw = function(){
-		ctx.beginPath();
-		ctx.fillStyle = this.c;
-		ctx.arc(this.x,this.y,this.r,0,Math.PI*2,false);
-		ctx.fill();
-	};
-}
-//--------------- paddle object 
-function Paddle(myColor){
-	// direction property
-	this.direction = "";
-	// width and height propertys
-	this.height = 20;
-	this.width = 150;
-	// position properties
-	this.x = W/2 - this.width/2;
-	this.y = H - this.height;
-	// color property
-	this.c = myColor;
-	//draw method
-	this.draw = function(){
-		ctx.fillStyle = this.c;
-		ctx.fillRect(this.x,this.y,this.width,this.height);
-	}
-}
-//--------------- brick object 
-function Brick(posX,posY,myColor){
-	//size properties
-	this.height=40;
-	this.width = 150;
-	//position properties
-	this.x = posX;
-	this.y = posY;
-	//color propertie
-	this.c = myColor;
-	//difficulty and hits recieved property
-	this.type ="normal";
-	this.hitCount = 0;
-	//check if levels above 2
-	if(newLevel.myLevel > 2){
-		//randomly choose if this brick will be a hard to destroy brick
-		if(Math.floor(Math.random()*20) <= 5){
-			this.type = 'hard';
-		}
-	}
-	//method to draw 
-	this.draw =function(){
-		ctx.beginPath();
-		ctx.rect(this.x,this.y,this.width,this.height);
-		ctx.fillStyle = this.c;
-		ctx.fill();
-		ctx.lineWidth = 5;
-		ctx.strokeStyle = 'black';
-		ctx.stroke();
-	}
-}
-//--------------- object to keep track of the score
-function Score(posX,posY,myColor){
-	this.score = 0;
-	this.x = posX;
-	this.y = posY;
-	this.c = myColor;
-	this.draw = function(){
-		ctx.fillStyle = "white";
-		ctx.font = "20px Arial, sans-serif";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText("Score: "+ this.score, this.x, this.y);
-	}
-	this.updateScore = function(newScore){
-		this.score += newScore;
-	}
-	this.getScore = function(){
-		return this.score;
-	}
-}
-
-function Overlay(myX,myY,type){
-	this.myLevel = 2;
-	if(type == "level"){
-		this.title = "Next Level";
-		this.description = '';
-	}else if (type=="win"){
-		this.title = "You Win!";
-		this.description = "Press enter to play again";
-	}else if(type == "gameover"){
-		this.title = "GAME OVER";
-		this.description = "Press enter to try again";
-	}else if(type=='start'){
-		this.title = "Brick Breaker"; 
-		this.description = "Click to start.";
-	}
-
-	this.x = myX;
-	this.y = myY;
-
-	if(type == 'level'){
-		this.description = "Level " + this.myLevel;
-	}
-
-	this.updateLevel =function(lev){
-
-		this.myLevel++;
-		if(type == 'level'){
-			this.description = "Level " + this.myLevel;
-		}
-	};
-
-	this.draw = function(){
-		ctx.beginPath();
-		ctx.rect(0,0,canvas.width,canvas.height);
-		ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-		ctx.fill();
-
-		ctx.fillStyle = "white";
-		ctx.font = "40px Arial, sans-serif";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		if(type == "start"){
-			ctx.font = "60px Arial, sans-serif";
-			ctx.fillText(this.title, this.x, this.y);
-			ctx.font = "20px Arial, sans-serif";
-			ctx.fillText(this.description, this.x, this.y+50);	
-		}else{
-			ctx.fillText(this.title, this.x, this.y);
-			ctx.fillText(this.description, this.x, this.y+50);	
-		}
-		
-		ctx.fillStyle = "green";
-		if((type=='gameover')||(type=='win'))ctx.fillText("Your Score: " + score.getScore(), this.x, this.y+100);
-		
-	}
-}
-//------------------------------functions
+// calculate the number of columns based on  
+//the width of the screen and return the result
 
 function calcNumOfCols(screenW){
 	var num = W;
 	var isMaxReached = false;
+	// num is set to the width of the screen, and a while loop is set to reduce from the width 
+	// until the width of all bricks will fit evenely
 	while(!isMaxReached){
 		if(num % BRICK_WIDTH == 0){
 			isMaxReached = true;
@@ -450,25 +307,34 @@ function calcNumOfCols(screenW){
 	return num;
 }
 
-
+// method to place all bricks in an array
 function placeBricks(){
-	var bColor = Math.floor(Math.random()*5);
+	// randomize the color choice
+	var bColor = Math.floor(Math.random()*2);
+	// init the width variable
 	var myWidth;
 	if(W < 1050){
 		myWidth = 1050;
 	}else{
 		myWidth = W;
 	}
-
+	// set the left side padding
 	var leftPadding = (W - 1050)/ 2;
+	// init the row hieght
 	var row = 40;
 	var column = leftPadding;
-	// for (var i = 0; i < 1; i++) {
-	for (var i = 0; i < 49; i++) {
+			//to test with less bricks
+	// for (var i = 0; i < 1; i++) { 
+	// loop through the number of bricks
+	for (var i = 0; i < NUM_OF_BRICKS; i++) {
+		// crate a new brick with a random color choice from the array
 		var bColor = Math.floor(Math.random()*2);
 		var myColor = brickColors[bColor];
-		var brick = new Brick(column,row,myColor);
+		var brick = new Brick(column,row,myColor,ctx,canvas);
+		// add it to the brick array
 		bricks.push(brick);
+		//calculate the next brick's position 
+		// *** it is a similar prcedure to how a sprite sheet is animated with the drawImage()
 		if(column > (1000+leftPadding)-brick.width){
 			column =leftPadding;
 			row+=brick.height;
@@ -483,23 +349,28 @@ function paintCanvas(){
 	ctx.fillStyle = "black";
 	ctx.fillRect(0,0,W,H);
 }
-
+// draw method for all entitities in the stage, this is called in the game loop above
 function draw(){
+	// paint the canvas
 	paintCanvas();
+	// draw the paddle
 	paddle.draw();
+	// draw all bricks
 	for(var i =0; i < bricks.length; i++){
 		bricks[i].draw();
 	}
+	// draw the ball and score objects
 	ball.draw();
 	score.draw();
 
+	// if the game is over draw the game over overlay
 	if(isGameOver){
 		gameOver.draw();
 	}
 	
+	// if the level is advacing draw the level overlay
 	if(isAdvanceLevel){
 		timer += 0.001;
-		console.log(timer);
 		newLevel.draw();
 		if((timer > 0.05)){
 			nextLevel();
@@ -507,68 +378,85 @@ function draw(){
 			isAdvanceLevel = false;
 		}
 	}
+	// start screen overlay
 	if(isGameStart){
 		start.draw();
 	}
 
 }
 
-//------------------------------event handlers
+//----------------------------------------------EVENT HANDLERS
+// hnadler for mouse movement
 function trackPosition(e){
-	if(!isGameStart){
+	if(!isGameStart){ // check if game is in start screen
 		var distanceR;
 		var distanceL;
-
+		//put the paddle back in the middle each new level
 		if(!isAdvanceLevel)paddle.x = mouse.x -paddle.width/2;	
+		//get the left and right side distance
 		distanceR = W - (paddle.x +paddle.width);
 		distanceL = paddle.x;
 		reducePaddleX = 20;
 		// reduce the bounds of the sides by a little to  correct potential problem of ball getting stuck on the sides 
+		// prevent the paddle from going out of bounds
 		if(distanceR <= -reducePaddleX){
 			paddle.x = W - paddle.width+reducePaddleX;
 		}else if(distanceL <= -reducePaddleX){
 			paddle.x = -reducePaddleX;
 		}
-
+		// get the left side canvas offset from centering it
 		var canvasOffset = $("#canvas").offset();
         var offsetX = canvasOffset.left;
         var offsetY = canvasOffset.top;
 
+        // set the mouse object x and y to the cursor, taking away the offset
 		mouse.x = parseInt(e.clientX - offsetX);
         mouse.y = parseInt(e.clientY - offsetY);
 	}
 }
-
+// function to stop the game completely
 function killGame(){
 	isGameOver = true;
 	clearInterval(loopInterval);
 }
-
+// function to advance to the next level
 function nextLevel(){
+	// update the level
 	newLevel.updateLevel();
-	if(!newLevel.myLevel > 5)paddle.width = paddle.width * 0.9;
+	// if the level are not higher than three, reduce the size of the paddle by 20 percent
+	if(!(newLevel.myLevel > 3))paddle.width = paddle.width * 0.8;
+	// reset the paddle and ball position
 	paddle.x = W/2 - paddle.width/2;
 	ball.x = paddle.x + paddle.width/2;
 	ball.y = paddle.y-paddle.height-10;
 	ball.vy = Math.abs(ball.vy) * -1;
+	//replace all the bricks
 	placeBricks();
 }
 
+// funciton to restart the game upon game over
 function restart(){
+	// reset game start boolean
 	isGameStart = true;
+	// recreate game loop 
 	loopInterval = setInterval("requestAnimFrame(render)", 1000 / TARGET_FPS);
+	// reset level and ball/ paddle positions
 	newLevel.myLevel = 1;
 	paddle.x = W/2 - paddle.width/2;
 	ball.x = paddle.x + paddle.width/2;
 	ball.y = paddle.y-paddle.height-10;
 	ball.vy = Math.abs(ball.vy) * -1;
+	// reset score and paddle size
 	score.score = 0;
 	paddle.width = 150;
+	// set game over to false
 	isGameOver = false;
 }
-
+// function to change color and also detect for enter key pressed
 function changeColor(e){
+	//check for space bar pressed
 	if(e.keyCode == 32){
+		//toggle the colors
 		if(paddle.c == brickColors[0]){
 			paddle.c = brickColors[1];	
 			ball.c = brickColors[1];
@@ -579,31 +467,29 @@ function changeColor(e){
 		
 		
 	}else if(e.keyCode == 13 && isGameOver){
+		// if enter is pressed and the game is over reatart the game
 		restart();
 	}
 }
 
-
+// functions to randomize slightly the ball's speed
 function rndSpeedX(){
 
 	var maxX = ballVX+1;
 	var minX = ballVX-1;
-
+	// check if the ball is already traveling in the positive or negative direction and randomize accordingly
 	if(ball.vx < 0){
-		console.log(ball.vx+"b");
 		ball.vx = (minX + (Math.random() * ((maxX - minX) + 1))) * -1;
-		console.log(ball.vx+"a");
 	}else{
 		ball.vx = minX + (Math.random() * ((maxX - minX) + 1));
 	}
 
 }
-
+// same as above but for y
 function rndSpeedY(){
 
 	var maxY = ballVY+1;
 	var minY = ballVY-1;
-	console.log(ballVY);
 
 	if(ball.vy < 0){
 		ball.vy = minY + (Math.random() * ((maxY - minY) + 1));
